@@ -1,0 +1,25 @@
+name: Load Matrix From JSON
+
+on:
+  workflow_call:
+    inputs:
+      file:
+        required: true
+        type: string
+    outputs:
+      matrix:
+        value: ${{ jobs.load.outputs.matrix }}
+
+jobs:
+  load:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: set
+        name: Read matrix from file
+        run: |
+          MATRIX=$(cat ${{ inputs.file }} | jq -c .)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
