@@ -3,8 +3,8 @@
 %%% @doc 
 %%%
 %%% @end
-%%% Created : 17 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_hello_plugin).
+%%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
+-module(seven_khepri_pause_minority).
 
 -behaviour(gen_server).
 
@@ -12,12 +12,12 @@
 -export([start/1, stop/1, start_link/0, start_link/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 
--include("include/seven_hello_plugin.hrl").
+-include("include/seven_khepri_pause_minority.hrl").
 
 -record(state, {dummy}).
 
 start(Name) ->
-    seven_hello_plugin_sup:start_child(Name).
+    seven_khepri_pause_minority_sup:start_child(Name).
 
 stop(Name) ->
     gen_server:call(Name, stop).

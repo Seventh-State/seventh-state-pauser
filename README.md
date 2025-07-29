@@ -1,4 +1,4 @@
-# Seventh State Hello Plugin
+# Seventh State Khepri Pause-Minority
 
 This repository is a **template plugin** for Seventh State plugins. You can use it as a starting point for your own plugin development.
 
@@ -86,7 +86,7 @@ It includes everything needed to build, test, and release your plugin alongside 
    Example:
 
    ```
-   v4.1.2-hello-plugin
+   v4.1.2-khepri-pause-minority
    ```
 3. Make your changes and push the branch to GitHub.
 4. Navigate to the **GitHub Actions** page of the plugin repository.
@@ -111,8 +111,8 @@ It includes everything needed to build, test, and release your plugin alongside 
    For example:
 
    ```
-   priv/seven_hello_plugin_manifest_v4.1.2.json
-   priv/seven_hello_plugin_manifest_v4.0.9.json
+   priv/seven_khepri_pause_minority_manifest_v4.1.2.json
+   priv/seven_khepri_pause_minority_manifest_v4.0.9.json
    ```
 4. **Manually verify the manifest**, especially the `changed_modules` list, which includes all `.beam` files that were modified.
    Example manifest:
@@ -151,15 +151,15 @@ You will see **multiple `.ez` and `.zip` files**, corresponding to the different
 * **Plugin `.ez` files**:
 
   ```
-  seventh-state-hello-plugin-rabbitmq-v4.1.2-ez
-  seventh-state-hello-plugin-rabbitmq-v4.0.9-ez
+  seventh-state-khepri-pause-minority-rabbitmq-v4.1.2-ez
+  seventh-state-khepri-pause-minority-rabbitmq-v4.0.9-ez
   ```
 
 * **Module override `.zip` files**:
 
   ```
-  seventh-state-hello-plugin-rabbitmq-v4.1.2-modules
-  seventh-state-hello-plugin-rabbitmq-v4.0.9-modules
+  seventh-state-khepri-pause-minority-rabbitmq-v4.1.2-modules
+  seventh-state-khepri-pause-minority-rabbitmq-v4.0.9-modules
   ```
 
 You can download and use these artifacts for testing or deployment.

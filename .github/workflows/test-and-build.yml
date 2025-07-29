@@ -45,5 +45,5 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: seventh-state-hello-plugin-rabbitmq-${{ matrix.rabbitmq }}-ez
-          path: plugins/seventh_state_hello_plugin-*.ez
+          name: seventh-state-khepri-pause-minority-rabbitmq-${{ matrix.rabbitmq }}-ez
+          path: plugins/seventh_state_khepri_pause_minority-*.ez

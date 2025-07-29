@@ -3,8 +3,8 @@
 %%% @doc 
 %%%
 %%% @end
-%%% Created : 17 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_hello_plugin_tests).
+%%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
+-module(seven_khepri_pause_minority_tests).
 
 %%%===================================================================
 %%% Includes, defines, types and records
@@ -47,7 +47,7 @@ core_functionality_cleanup(_FromSetup) ->
 
 %% Core Functionality First Use Case
 core_functionality_first_use_case() ->
-    ?assertMatch([_|_], seven_hello_plugin:module_info()).
+    ?assertMatch([_|_], seven_khepri_pause_minority:module_info()).
 
 %%====================================================================
 %%  Helper functions

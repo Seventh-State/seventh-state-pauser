@@ -3,15 +3,15 @@
 %%% @doc 
 %%%
 %%% @end
-%%% Created : 17 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_hello_plugin_app).
+%%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
+-module(seven_khepri_pause_minority_app).
 
 -behaviour(application).
 -export([start/2, stop/1]).
 
 
 start(_StartType, _StartArgs) ->
-    case seven_hello_plugin_sup:start_link() of
+    case seven_khepri_pause_minority_sup:start_link() of
         {ok, Pid} ->
             {ok, Pid};
         Error ->
