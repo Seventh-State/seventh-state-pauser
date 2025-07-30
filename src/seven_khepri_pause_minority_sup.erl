@@ -25,7 +25,7 @@ init(_Args) ->
         #{
             id => seven_khepri_pause_minority,
             start => {seven_khepri_pause_minority, start_link, []},
-            restart => permanent, % permanent | transient | temporary
+            restart => transient, % permanent | transient | temporary
             shutdown => 2000, % use 'infinity' for supervisor child
             type => worker, % worker | supervisor
             modules => [seven_khepri_pause_minority]

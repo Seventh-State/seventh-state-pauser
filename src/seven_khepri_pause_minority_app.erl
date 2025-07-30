@@ -11,12 +11,7 @@
 
 
 start(_StartType, _StartArgs) ->
-    case seven_khepri_pause_minority_sup:start_link() of
-        {ok, Pid} ->
-            {ok, Pid};
-        Error ->
-            Error
-    end.
+    seven_khepri_pause_minority_sup:start_link().
 
 stop(_State) ->
     ok.
