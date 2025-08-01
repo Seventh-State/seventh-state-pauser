@@ -74,20 +74,27 @@ partition_test(Config) ->
     {ok, Channel1} = open_channel(Config, Node1),
     declare_classic_queue(Channel1, <<Queue/binary, "_classic">>),
     declare_exclusive_queue(Channel1, <<Queue/binary, "_exclusive">>),
-    
+
+    %% open a new connection to test if the connection is closed when the node is in minority partition
+    Connection1 = open_connection(Config, Node1),
+    ConnectionRef1 = erlang:monitor(process, Connection1),
+
     % put Node1 into minority partition
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node2),
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node3),
+    timer:sleep(5000),
+
+    assert_connection_alive(ConnectionRef1, Connection1),
+
+    CanOpenNewConnection = open_connection(Config, Node1),
+    {ok, _CanOpenNewChannel} = open_channel(CanOpenNewConnection),
 
     %% can publish and consume from predeclared queues and connections from minority node
     assert_classic_queue_works(Channel1, <<Queue/binary, "_classic">>),
     assert_exclusive_queue_works(Channel1, <<Queue/binary, "_exclusive">>),
 
-    {ok, CanOpenChannelFromOldConnection} = open_channel(Config, Node1),
-    ?assertMatch({'EXIT', _}, catch declare_classic_queue(CanOpenChannelFromOldConnection, <<"cannot declare classic queue">>)),
-
-    %% cannot open new connection and channel from minority node
-    ?assertMatch({'EXIT',{_,"Timed out waiting for connection to open"}}, catch open_connection_and_channel(Config, Node1)),
+    {ok, CanOpenChannelFromOldConnection} = open_channel(Connection1),
+    ?assertMatch({'EXIT', _}, catch declare_classic_queue(CanOpenChannelFromOldConnection, <<"cannot declare new queue">>)),
 
     ok.
 
@@ -141,6 +148,14 @@ nodenames(Config) ->
     Nodenames = rabbit_ct_broker_helpers:get_node_configs(Config, nodename),
     Nodenames.
 
+open_connection(Config, Node) ->
+    rabbit_ct_client_helpers:open_unmanaged_connection(Config, Node).
+
+open_channel(Connection) ->
+    {ok, Channel} = amqp_connection:open_channel(Connection),
+    amqp_channel:call(Channel, #'confirm.select'{}),
+    {ok, Channel}.
+
 open_channel(Config, Node) ->
     Channel = rabbit_ct_client_helpers:open_channel(Config, Node),
     amqp_channel:call(Channel, #'confirm.select'{}),
@@ -163,3 +178,12 @@ reset_node_states(Config) ->
                                    Nodes)
                   end,
                   Nodes).
+
+assert_connection_alive(Ref, Pid) ->
+    receive
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ct:pal("Connection closed: ~p~n", [Reason]),
+            ?assert(false)
+    after 35000 ->
+        ?assert(is_process_alive(Pid), "Connection should be alive but is not")
+    end.

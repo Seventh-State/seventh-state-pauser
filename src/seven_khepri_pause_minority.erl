@@ -14,6 +14,8 @@
 
 -include("include/seven_khepri_pause_minority.hrl").
 
+-include_lib("rabbit_common/include/rabbit.hrl").
+
 -define(INTERVAL, application:get_env(?MODULE, interval, 3)).
 -define(DB, rabbitmq_metadata).
 
@@ -36,7 +38,7 @@ init(_Args) ->
         {enabled, pause_minority} ->
             ?INF("Starting ~p with interval ~p seconds", [?MODULE, ?INTERVAL]),
             erlang:send_after(?INTERVAL * 1000, self(), check),
-            {ok, #{}};
+            {ok, #{listeners => running}};
         _ ->
             ?INF("Skipping ~p initialisation due to Khepri feature state or cluster partition handling settings", [?MODULE]),
             {ok, stopped} % indicates that the server will do nothing
@@ -53,22 +55,26 @@ handle_cast(_Msg, State) ->
 handle_info(check, State) ->
     Nodes = rabbit_nodes:list_members(),
     RunningNodes = rabbit_nodes:list_running(),
-    case length(RunningNodes) < length(Nodes) / 2 of
-        true when State =:= #{} ->
+    IsMinority = length(RunningNodes) < length(Nodes) / 2,
+    case IsMinority of
+        true when State =:= #{listeners => running} ->
             ?INF("Minority partition detected, pausing operations", []),
             rabbit_maintenance:suspend_all_client_listeners(),
-            %% disconnect everyone from local node?
-            %% Connections = rabbit_connection_tracking:list_on_node(node()),
-            %% rabbit_connection_tracking_handler:close_connections(Connections, <<"This node is in minority partition">>, 0),
-            %% or?
-            %% [spawn(fun(Node) -> net_kernel:disconnect(Node) end, Node) || Node <- Nodes -- [node()]],
+            Connections = rabbit_connection_tracking:list_on_node(node()),
+            [spawn(fun() ->
+                      rabbit_networking:close_connection(Pid,
+                                                         <<"Node ",
+                                                           (atom_to_binary(node()))/binary,
+                                                           " is in minority partition">>)
+                   end)
+             || #tracked_connection{pid = Pid, type = network} <- Connections],
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => suspended}};
-        false when State =/= #{} ->
+        false when State =:= #{listeners => suspended} ->
             ?INF("Minority partition no longer detected, resuming operations", []),
             rabbit_maintenance:resume_all_client_listeners(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
-            {noreply, #{}};
+            {noreply, #{listeners => running}};
         true ->
             ?DBG("Minority partition detected, but already in suspended state, skipping", []),
             erlang:send_after(?INTERVAL * 1000, self(), check),

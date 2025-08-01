@@ -1,6 +1,6 @@
 %%% @author Seventh State <contact@seventhstate.io>
 %%% @copyright (C) 2025, Seventh State
-%%% @doc 
+%%% @doc
 %%%
 %%% @end
 %%% Created : 30 Jul 2025 by Seventh State <contact@seventhstate.io>
@@ -10,7 +10,6 @@
 
 -include_lib("common_test/include/ct.hrl").
 -include_lib("eunit/include/eunit.hrl").
-
 -include_lib("amqp_client/include/amqp_client.hrl").
 
 all() ->
@@ -56,7 +55,7 @@ end_per_group(_, Config) ->
                                 ++ rabbit_ct_broker_helpers:teardown_steps()).
 
 init_per_testcase(Testcase, Config) ->
-    %% %% Net tick time was hardecoded to 5 seconds for testing in RabbitMQ recent versions, so we need to set it manually
+    %% Net tick time was hardecoded to 5 seconds for testing in RabbitMQ recent versions, so we need to set it manually
     rabbit_ct_broker_helpers:rpc_all(Config, application, set_env, [kernel, net_ticktime, 3]),
     reset_node_states(Config),
     rabbit_ct_helpers:testcase_started(Config, Testcase).
@@ -72,34 +71,43 @@ partition_test(Config) ->
     Node1 = nodename(Config, 0),
     Node2 = nodename(Config, 1),
     Node3 = nodename(Config, 2),
-    
+
     Queue = atom_to_binary(?FUNCTION_NAME),
-    {ok, Channel1} = open_channel(Config, Node1),
-    declare_classic_queue(Channel1, <<Queue/binary, "_classic">>),
-    declare_exclusive_queue(Channel1, <<Queue/binary, "_exclusive">>),
-    
-    % put Node1 into minority partition
+    {ok, Channel} = open_channel(Config, Node1),
+    declare_classic_queue(Channel, <<Queue/binary, "_classic">>),
+    declare_exclusive_queue(Channel, <<Queue/binary, "_exclusive">>),
+
+    %% test with qq if the connetion is disconnected or blocked when there is a consumer connected
+    %% open a new connection to test if the connection is closed when the node is in minority partition
+    Connection1 = open_connection(Config, Node1),
+    {ok, Channel1} = open_channel(Connection1),
+    declare_quorum_queue(Channel1, <<Queue/binary, "_quorum">>),
+    consume(Channel1, <<Queue/binary, "_quorum">>),
+
+    ConnectionRef1 = erlang:monitor(process, Connection1),
+
+    %% put Node1 into minority partition
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node2),
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node3),
-    timer:sleep(5000), % wait for the minority partition to be detected
+    %% create a long enough disconnection
+    wait_for_net_tick_timeout(Config),
+    wait_for_net_tick_timeout(Config),
+    wait_for_net_tick_timeout(Config),
 
-    %% RunningNodes = rabbit_ct_broker_helpers:rpc_all(Config, rabbit_nodes, list_running, []),
-    %% Nodes = rabbit_ct_broker_helpers:rpc_all(Config, rabbit_nodes, list_members, []),
+    assert_connection_closed(ConnectionRef1, Connection1),
 
-    %% can publish and consume from predeclared queues and connections from minority node
-    assert_classic_queue_works(Channel1, <<Queue/binary, "_classic">>),
-    assert_exclusive_queue_works(Channel1, <<Queue/binary, "_exclusive">>),
+    {error, _CannotOpenNewConnection} = open_connection(Config, Node1),
+    ?assert(is_pid(open_connection(Config, Node2)), "Connection to Node2 should be able to open"),
+    ?assert(is_pid(open_connection(Config, Node3)), "Connection to Node3 should be able to open"),
 
-    {ok, CanOpenChannelFromOldConnection} = open_channel(Config, Node1),
-    ?assertMatch({'EXIT', _}, catch declare_classic_queue(CanOpenChannelFromOldConnection, <<"cannot declare classic queue">>)),
-
-    %% cannot open new connection and channel from minority node
-    ?assertMatch({'EXIT',{_,"Timed out waiting for connection to open"}}, catch open_connection_and_channel(Config, Node1)),
-
+    %% restore cluster
     rabbit_ct_broker_helpers:allow_traffic_between(Node1, Node2),
     rabbit_ct_broker_helpers:allow_traffic_between(Node1, Node3),
+    timer:sleep(5000), % wait for the cluster to stabilize
 
-    wait_for_net_tick_timeout(Config),
+    {ok, OpenNewChannel} = open_channel(Config, Node1),
+    declare_classic_queue(OpenNewChannel, <<Queue/binary, "_classic_recovered">>),
+    assert_classic_queue_works(OpenNewChannel, <<Queue/binary, "_classic_recovered">>),
 
     ok.
 
@@ -117,6 +125,26 @@ declare_exclusive_queue(Channel, Queue) ->
                                        auto_delete = true,
                                        exclusive = true,
                                        arguments = []}).
+
+declare_quorum_queue(Channel, Queue) ->
+    amqp_channel:call(Channel,
+                      #'queue.declare'{queue = Queue,
+                                       durable = true,
+                                       auto_delete = false,
+                                       arguments = [{<<"x-queue-type">>, longstr, <<"quorum">>}]}).
+
+consume(Channel, Queue) ->
+    amqp_channel:subscribe(Channel,
+                           #'basic.consume'{queue = Queue,
+                                            consumer_tag = <<"test_consumer">>,
+                                            no_ack = true},
+                           self()),
+    receive
+        #'basic.consume_ok'{consumer_tag = _ConsumerTag} ->
+            ok
+    after 5000 ->
+        ct:fail("Failed to consume from queue ~p", [Queue])
+    end.
 
 assert_classic_queue_works(Channel, Queue) ->
     Payload = crypto:strong_rand_bytes(64),
@@ -153,6 +181,14 @@ nodenames(Config) ->
     Nodenames = rabbit_ct_broker_helpers:get_node_configs(Config, nodename),
     Nodenames.
 
+open_connection(Config, Node) ->
+    rabbit_ct_client_helpers:open_unmanaged_connection(Config, Node).
+
+open_channel(Connection) ->
+    {ok, Channel} = amqp_connection:open_channel(Connection),
+    amqp_channel:call(Channel, #'confirm.select'{}),
+    {ok, Channel}.
+
 open_channel(Config, Node) ->
     Channel = rabbit_ct_client_helpers:open_channel(Config, Node),
     amqp_channel:call(Channel, #'confirm.select'{}),
@@ -175,3 +211,15 @@ reset_node_states(Config) ->
                                    Nodes)
                   end,
                   Nodes).
+
+assert_connection_closed(Ref, Pid) ->
+    receive
+        {'DOWN', Ref, process, Pid, Reason} ->
+            ct:pal("Connection closed: ~p~n", [Reason]),
+            ?assertMatch({shutdown, {server_initiated_close, _, _}}, Reason);
+        {'DOWN', _, process, _, Reason} ->
+            ct:pal("Unexpected connection close: ~p~n", [Reason]),
+            ?assert(false)
+    after 35000 ->
+        ?assertNot(is_process_alive(Pid), "Connection should be closed but is still alive")
+    end.
