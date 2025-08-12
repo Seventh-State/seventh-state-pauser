@@ -1,0 +1,4 @@
+
+{mapping, "seven_khepri_pause_minority.check_interval", "seven_khepri_pause_minority.interval", [
+    {datatype, integer},
+    {validators, ["non_negative_integer"]}]}.
