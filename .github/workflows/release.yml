@@ -32,7 +32,7 @@ jobs:
         run: make dist DIST_AS_EZS=1 current_rmq_ref=${{ matrix.rabbitmq }}
 
       - name: Zip release artifact with RabbitMQ version
-        run: zip -rj seventh-state-khepri-pause-minority-rabbitmq-${{ matrix.rabbitmq }}.zip plugins/seventh_state_khepri_pause_minority-*.ez
+        run: zip -rj seventh-state-khepri-pause-minority-rabbitmq-${{ matrix.rabbitmq }}.zip plugins/seventh_state_pauser-*.ez
 
       - name: Upload zip artifact
         uses: actions/upload-artifact@v4

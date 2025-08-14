@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_khepri_pause_minority_sup).
+-module(seven_pauser_sup).
 
 -behaviour(supervisor).
 
@@ -23,12 +23,12 @@ init(_Args) ->
 
     ChildSpecifications = [
         #{
-            id => seven_khepri_pause_minority,
-            start => {seven_khepri_pause_minority, start_link, []},
-            restart => transient, % permanent | transient | temporary
+            id => seven_pauser,
+            start => {seven_pauser, start_link, []},
+            restart => permanent, % permanent | transient | temporary
             shutdown => 2000, % use 'infinity' for supervisor child
             type => worker, % worker | supervisor
-            modules => [seven_khepri_pause_minority]
+            modules => [seven_pauser]
         }
     ],
 

@@ -4,14 +4,14 @@
 %%%
 %%% @end
 %%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_khepri_pause_minority_app).
+-module(seven_pauser_app).
 
 -behaviour(application).
 -export([start/2, stop/1]).
 
 
 start(_StartType, _StartArgs) ->
-    seven_khepri_pause_minority_sup:start_link().
+    seven_pauser_sup:start_link().
 
 stop(_State) ->
     ok.

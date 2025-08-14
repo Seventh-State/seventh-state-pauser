@@ -1,0 +1,4 @@
+
+{mapping, "seven_pauser.check_interval", "seven_pauser.interval", [
+    {datatype, integer},
+    {validators, ["non_negative_integer"]}]}.

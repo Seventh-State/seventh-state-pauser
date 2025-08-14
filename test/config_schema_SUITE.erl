@@ -18,7 +18,7 @@ all() ->
 init_per_suite(Config) ->
     rabbit_ct_helpers:log_environment(),
     Config1 = rabbit_ct_helpers:run_setup_steps(Config),
-    rabbit_ct_config_schema:init_schemas(seven_khepri_pause_minority, Config1).
+    rabbit_ct_config_schema:init_schemas(seven_pauser, Config1).
 
 end_per_suite(Config) ->
     rabbit_ct_helpers:run_teardown_steps(Config).

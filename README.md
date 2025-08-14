@@ -1,6 +1,6 @@
-# Seventh State Khepri Pause-Minority
+# Seventh State PauseR
 
-The Seventh State Khepri Pause-Minority plugin introduces `pause_minority` equivalent behaviour tailored for Khepri in RabbitMQ.
+The Seventh State PauseR plugin introduces `pause_minority` equivalent behaviour tailored for Khepri in RabbitMQ.
 
 It detects when the local node is part of a minority partition and enforces a safe degraded mode by:
 

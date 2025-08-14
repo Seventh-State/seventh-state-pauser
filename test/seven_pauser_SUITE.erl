@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% Created : 30 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_khepri_pause_minority_SUITE).
+-module(seven_pauser_SUITE).
 
 -compile(export_all).
 

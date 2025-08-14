@@ -1,6 +1,6 @@
-PROJECT             = seventh_state_khepri_pause_minority
-PROJECT_DESCRIPTION = Seventh State Khepri Pause-Minority
-PROJECT_MOD         = seven_khepri_pause_minority_app
+PROJECT             = seventh_state_pauser
+PROJECT_DESCRIPTION = Seventh State PauseR
+PROJECT_MOD         = seven_pauser_app
 PROJECT_VERSION     = 1.0.0
 
 current_rmq_ref     ?= v4.1.2
