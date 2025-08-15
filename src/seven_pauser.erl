@@ -10,7 +10,8 @@
 
 %% API
 -export([start/1, stop/1, start_link/0, start_link/1]).
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
+         code_change/3]).
 
 -include("include/seven_pauser.hrl").
 
@@ -36,11 +37,16 @@ init(_Args) ->
     ClusterPartitionHandling = application:get_env(rabbit, cluster_partition_handling, ignore),
     case {KhepriState, ClusterPartitionHandling} of
         {enabled, pause_minority} ->
-            ?INF("Starting ~p with interval ~p seconds", [?MODULE, ?INTERVAL]),
+            ?INF("Seventh State PauseR is initialised and running with interval "
+                 "~p seconds",
+                 [?INTERVAL]),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {ok, #{listeners => running}};
         _ ->
-            ?INF("Skipping ~p initialisation due to Khepri feature state or cluster partition handling settings", [?MODULE]),
+            ?INF("Seventh State PauseR is not initialised: enable khepri-db feature "
+                 "flag and set cluster_partition_handling=pause_minority, then "
+                 "restart RabbitMQ to initialise the plugin",
+                 []),
             {ok, stopped} % indicates that the server will do nothing
     end.
 
@@ -69,7 +75,9 @@ handle_info(check, State) ->
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => running}};
         true ->
-            ?DBG("Minority partition detected, but already in suspended state, skipping", []),
+            ?DBG("Minority partition detected, but already in suspended state, "
+                 "skipping",
+                 []),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, State};
         false ->
