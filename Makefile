@@ -3,7 +3,7 @@ PROJECT_DESCRIPTION = Seventh State PauseR
 PROJECT_MOD         = seven_pauser_app
 PROJECT_VERSION     = 1.0.0
 
-current_rmq_ref     ?= v4.1.2
+current_rmq_ref     ?= v4.1.x
 
 define PROJECT_APP_EXTRA_KEYS
     {broker_version_requirements, []}

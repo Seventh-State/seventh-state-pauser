@@ -59,20 +59,13 @@ handle_info(check, State) ->
     case IsMinority of
         true when State =:= #{listeners => running} ->
             ?INF("Minority partition detected, pausing operations", []),
-            rabbit_maintenance:suspend_all_client_listeners(),
-            Connections = rabbit_connection_tracking:list_on_node(node()),
-            [spawn(fun() ->
-                      rabbit_networking:close_connection(Pid,
-                                                         <<"Node ",
-                                                           (atom_to_binary(node()))/binary,
-                                                           " is in minority partition">>)
-                   end)
-             || #tracked_connection{pid = Pid, type = network} <- Connections],
+            suspend_listeners(),
+            close_connections(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => suspended}};
         false when State =:= #{listeners => suspended} ->
             ?INF("Minority partition no longer detected, resuming operations", []),
-            rabbit_maintenance:resume_all_client_listeners(),
+            resume_listeners(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => running}};
         true ->
@@ -92,3 +85,38 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+suspend_listeners() ->
+    Listeners = listeners(),
+    ?INF("Asked to suspend ~b client connection listeners. No new client "
+         "connections will be accepted until these listeners are resumed!",
+         [length(Listeners)]),
+    lists:foreach(fun ranch:suspend_listener/1, Listeners).
+
+resume_listeners() ->
+    Listeners = listeners(),
+    ?INF("Asked to resume ~b client connection listeners. New client "
+         "connections will be accepted again!",
+         [length(Listeners)]),
+    lists:foreach(fun ranch:resume_listener/1, Listeners).
+
+listeners() ->
+    [rabbit_networking:ranch_ref(Addr, Port)
+     || #listener{node = Node,
+                  protocol = Protocol,
+                  ip_address = Addr,
+                  port = Port}
+            <- rabbit_networking:node_client_listeners(node()),
+        Node =:= node(),
+        Protocol =/= clustering,
+        Protocol =/= http].
+
+close_connections() ->
+    Connections = rabbit_connection_tracking:list_on_node(node()),
+    [spawn(fun() ->
+              rabbit_networking:close_connection(Pid,
+                                                 <<"Node ",
+                                                   (atom_to_binary(node()))/binary,
+                                                   " is in minority partition">>)
+           end)
+     || #tracked_connection{pid = Pid, type = network} <- Connections].

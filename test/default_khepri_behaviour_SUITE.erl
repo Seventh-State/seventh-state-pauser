@@ -4,7 +4,7 @@
 %%%
 %%% @end
 %%% Created : 30 Jul 2025 by Seventh State <contact@seventhstate.io>
--module(seven_khepri_behaviour_SUITE).
+-module(default_khepri_behaviour_SUITE).
 
 -compile(export_all).
 
@@ -36,6 +36,7 @@ init_per_group(Group, Config) ->
     init_per_group(Group, Config, 1).
 
 init_per_group(Group, Config, NodesCount) ->
+    inets:start(),
     Config1 =
         rabbit_ct_helpers:set_config(Config,
                                      [{rmq_nodes_count, NodesCount},
@@ -48,6 +49,7 @@ init_per_group(Group, Config, NodesCount) ->
                                 ++ rabbit_ct_client_helpers:setup_steps()).
 
 end_per_group(_, Config) ->
+    inets:stop(),
     rabbit_ct_helpers:run_steps(Config,
                                 rabbit_ct_client_helpers:teardown_steps()
                                 ++ rabbit_ct_broker_helpers:teardown_steps()).
@@ -71,10 +73,11 @@ partition_test(Config) ->
     Node3 = nodename(Config, 2),
     
     Queue = atom_to_binary(?FUNCTION_NAME),
-    {ok, Channel1} = open_channel(Config, Node1),
+    {Connection, Channel1} = open_connection_and_channel(Config, Node1),
     declare_classic_queue(Channel1, <<Queue/binary, "_classic">>),
     declare_exclusive_queue(Channel1, <<Queue/binary, "_exclusive">>),
 
+    ConnectionRef = erlang:monitor(process, Connection),
     %% open a new connection to test if the connection is closed when the node is in minority partition
     Connection1 = open_connection(Config, Node1),
     ConnectionRef1 = erlang:monitor(process, Connection1),
@@ -82,11 +85,16 @@ partition_test(Config) ->
     % put Node1 into minority partition
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node2),
     rabbit_ct_broker_helpers:block_traffic_between(Node1, Node3),
-    timer:sleep(5000),
+    wait_for_net_tick_timeout(Config),
+    wait_for_net_tick_timeout(Config),
+    wait_for_net_tick_timeout(Config),
 
+    assert_connection_alive(ConnectionRef, Connection),
     assert_connection_alive(ConnectionRef1, Connection1),
+    assert_http_connection_available(Config, Node1),
 
     CanOpenNewConnection = open_connection(Config, Node1),
+    ?assert(is_pid(CanOpenNewConnection)),
     {ok, _CanOpenNewChannel} = open_channel(CanOpenNewConnection),
 
     %% can publish and consume from predeclared queues and connections from minority node
@@ -187,3 +195,25 @@ assert_connection_alive(Ref, Pid) ->
     after 35000 ->
         ?assert(is_process_alive(Pid), "Connection should be alive but is not")
     end.
+
+assert_http_connection_available(Config, Node) ->
+    ?assertMatch({ok, {{_, 200, _}, _, _}}, get(Config, "/api/overview", Node)).
+
+auth_header() ->
+    auth_header(<<"guest">>, <<"guest">>).
+
+auth_header(Username, Password) ->
+    {"Authorization",
+     <<"Basic ", (base64:encode(<<Username/binary, ":", Password/binary>>))/binary>>}.
+
+mgmt_port(Config, Node) ->
+    rabbit_ct_broker_helpers:get_node_config(Config, Node, tcp_port_mgmt).
+
+base_uri(Config, Node) ->
+    "http://localhost:" ++ integer_to_list(mgmt_port(Config, Node)).
+
+get(Config, API, Node) ->
+    httpc:request(get,
+                  {base_uri(Config, Node) ++ API, [auth_header()]},
+                  [{ssl, [{verify_peer, verify_none}]}],
+                  [{body_format, binary}]).

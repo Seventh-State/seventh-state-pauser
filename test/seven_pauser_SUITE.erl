@@ -35,6 +35,7 @@ init_per_group(Group, Config) ->
     init_per_group(Group, Config, 1).
 
 init_per_group(Group, Config, NodesCount) ->
+    inets:start(),
     Config0 =
         rabbit_ct_helpers:set_config(Config,
                                      [{rmq_nodes_count, NodesCount},
@@ -50,6 +51,7 @@ init_per_group(Group, Config, NodesCount) ->
                                 ++ rabbit_ct_client_helpers:setup_steps()).
 
 end_per_group(_, Config) ->
+    inets:stop(),
     rabbit_ct_helpers:run_steps(Config,
                                 rabbit_ct_client_helpers:teardown_steps()
                                 ++ rabbit_ct_broker_helpers:teardown_steps()).
@@ -73,7 +75,7 @@ partition_test(Config) ->
     Node3 = nodename(Config, 2),
 
     Queue = atom_to_binary(?FUNCTION_NAME),
-    {ok, Channel} = open_channel(Config, Node1),
+    {Connection, Channel} = open_connection_and_channel(Config, Node1),
     declare_classic_queue(Channel, <<Queue/binary, "_classic">>),
     declare_exclusive_queue(Channel, <<Queue/binary, "_exclusive">>),
 
@@ -84,6 +86,7 @@ partition_test(Config) ->
     declare_quorum_queue(Channel1, <<Queue/binary, "_quorum">>),
     consume(Channel1, <<Queue/binary, "_quorum">>),
 
+    ConnectionRef = erlang:monitor(process, Connection),
     ConnectionRef1 = erlang:monitor(process, Connection1),
 
     %% put Node1 into minority partition
@@ -95,6 +98,8 @@ partition_test(Config) ->
     wait_for_net_tick_timeout(Config),
 
     assert_connection_closed(ConnectionRef1, Connection1),
+    assert_connection_closed(ConnectionRef, Connection),
+    assert_http_connection_available(Config, Node1),
 
     {error, _CannotOpenNewConnection} = open_connection(Config, Node1),
     ?assert(is_pid(open_connection(Config, Node2)), "Connection to Node2 should be able to open"),
@@ -132,6 +137,13 @@ declare_quorum_queue(Channel, Queue) ->
                                        durable = true,
                                        auto_delete = false,
                                        arguments = [{<<"x-queue-type">>, longstr, <<"quorum">>}]}).
+
+declare_auto_delete_queue(Channel, Queue) ->
+    amqp_channel:call(Channel,
+                      #'queue.declare'{queue = Queue,
+                                       durable = false,
+                                       auto_delete = true,
+                                       arguments = []}).
 
 consume(Channel, Queue) ->
     amqp_channel:subscribe(Channel,
@@ -223,3 +235,25 @@ assert_connection_closed(Ref, Pid) ->
     after 35000 ->
         ?assertNot(is_process_alive(Pid), "Connection should be closed but is still alive")
     end.
+
+assert_http_connection_available(Config, Node) ->
+    ?assertMatch({ok, {{_, 200, _}, _, _}}, get(Config, "/api/overview", Node)).
+
+auth_header() ->
+    auth_header(<<"guest">>, <<"guest">>).
+
+auth_header(Username, Password) ->
+    {"Authorization",
+     <<"Basic ", (base64:encode(<<Username/binary, ":", Password/binary>>))/binary>>}.
+
+mgmt_port(Config, Node) ->
+    rabbit_ct_broker_helpers:get_node_config(Config, Node, tcp_port_mgmt).
+
+base_uri(Config, Node) ->
+    "http://localhost:" ++ integer_to_list(mgmt_port(Config, Node)).
+
+get(Config, API, Node) ->
+    httpc:request(get,
+                  {base_uri(Config, Node) ++ API, [auth_header()]},
+                  [{ssl, [{verify_peer, verify_none}]}],
+                  [{body_format, binary}]).

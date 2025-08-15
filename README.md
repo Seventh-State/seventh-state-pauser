@@ -60,6 +60,15 @@ The interval between checks can be configured through:
 The default value is 3 seconds, which offers a balance between resource usage and efficiency of detection.
 A lower value will detect partitions quicker at the cost of an increased resource usage.
 
+## Default Kherpi Behaviour
+
+When a node is in a minority partition:
+
+- Existing connections remain open
+- New connections are accepted
+- Local publish/consume on **pre-declared classic queues** continues (producer and consumer on the same node)
+- Queue declarations (any type) are rejected
+
 ## Plugin Behaviour
 
 - On startup, the plugin automatically starts alongside the RabbitMQ cluster, operating in line with the configured cluster_partition_handling.
