@@ -1,13 +1,78 @@
 # Seventh State PauseR
 
-The Seventh State PauseR plugin introduces `pause_minority` equivalent behaviour tailored for Khepri in RabbitMQ.
+The Seventh State PauseR Plugin introduces pause_minority equivalent behaviour tailored for Khepri in RabbitMQ.
+It detects when the local node is in a minority partition and enforces a pause mode by:
 
-It detects when the local node is part of a minority partition and enforces a safe degraded mode by:
-
-- Suspending all listeners (excluding the management listeners)
+- Suspending all listeners
 - Closing all existing client connections
 
-## Getting Started
+This guide explains how to install, configure, and use the plugin.
+
+**Note**: This plugin only works when RabbitMQ is running with Khepri enabled. It has no effect if Khepri is disabled.
+
+## Requirements
+
+- RabbitMQ ≥ 4.1.0 (tested with RabbitMQ 4.1.2) with **Khepri enabled**.  
+  Install RabbitMQ with a compatible Erlang version as listed at:  
+  https://www.rabbitmq.com/docs/which-erlang
+
+- RabbitMQ must be configured with:  
+  `cluster_partition_handling = pause_minority`
+
+## Installation
+
+1. Obtain the Plugin  
+   The plugin must be compatible with your RabbitMQ and Erlang versions.  
+   Download the correct plugin build for your environment.
+
+2. Locate the RabbitMQ Plugin Directory  
+   You can find the plugin directory by running:  
+   `rabbitmq-plugins directories`  
+   Example output:  
+   `Plugin archives directory: /usr/lib/rabbitmq/plugins:/usr/lib/rabbitmq/lib/rabbitmq_server-4.1.2/plugins`
+
+3. Add the Plugin  
+   Copy the plugin into the plugins directory:  
+   `cp seventh_state_pauser.ez /usr/lib/rabbitmq/lib/rabbitmq_server-<version>/plugins/`
+
+4. Enable the Plugin  
+   `rabbitmq-plugins enable seventh_state_pauser`
+
+5. Restart RabbitMQ  
+   `systemctl restart rabbitmq-server`
+
+Make sure all cluster nodes have the plugin installed and enabled.
+
+## Configuration
+
+The plugin works automatically based on RabbitMQ’s native configuration.
+
+To enable correct behaviour during network partitions, ensure RabbitMQ is configured with:
+
+`cluster_partition_handling = pause_minority`
+
+The plugin uses this setting to determine how to react and manage cluster recovery.
+
+The interval between checks can be configured through:
+
+`seven_pauser.check_interval_seconds = 3`
+
+The default value is 3 seconds, which offers a balance between resource usage and efficiency of detection.
+A lower value will detect partitions quicker at the cost of an increased resource usage.
+
+## Plugin Behaviour
+
+- On startup, the plugin automatically starts alongside the RabbitMQ cluster, operating in line with the configured cluster_partition_handling.
+- Every interval (default 3 seconds), the plugin checks whether the local node is in a minority partition.
+- If in minority:
+   - Suspend all non-management listeners and prevents new client connections
+   - Close all existing client connections
+- If recovered to majority:
+   - Resume all listeners
+   - Allow new client connections
+- Management listeners (e.g., HTTP API, Management UI) still remain available.
+
+## Development
 
 You can choose to build and test the plugin using either:
 
