@@ -17,7 +17,7 @@
 
 -include_lib("rabbit_common/include/rabbit.hrl").
 
--define(INTERVAL, application:get_env(?MODULE, interval, 3)).
+-define(INTERVAL, application:get_env(?MODULE, interval, 5)).
 -define(DB, rabbitmq_metadata).
 
 start(Name) ->

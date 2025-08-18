@@ -55,9 +55,9 @@ The plugin uses this setting to determine how to react and manage cluster recove
 
 The interval between checks can be configured through:
 
-`seven_pauser.check_interval_seconds = 3`
+`seven_pauser.check_interval_seconds = 5`
 
-The default value is 3 seconds, which offers a balance between resource usage and efficiency of detection.
+The default value is 5 seconds, which offers a balance between resource usage and efficiency of detection.
 A lower value will detect partitions quicker at the cost of an increased resource usage.
 
 ## Default Kherpi Behaviour
