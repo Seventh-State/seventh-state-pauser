@@ -64,6 +64,7 @@ handle_info(check, State) ->
     IsMinority = length(RunningNodes) < length(Nodes) / 2,
     case IsMinority of
         true when State =:= #{listeners => running} ->
+            db_state(),
             ?INF("Minority partition detected, pausing operations", []),
             suspend_listeners(),
             close_connections(),
@@ -128,3 +129,13 @@ close_connections() ->
                                                    " is in minority partition">>)
            end)
      || #tracked_connection{pid = Pid, type = network} <- Connections].
+
+db_state() ->
+    case catch ets:lookup(ra_state, ?DB) of
+        [] ->
+            ?WRN("Failed to get state of ~p on node ~p", [?DB, node()]);
+        [{?DB, State, _}] when State =/= leader andalso State =/= follower ->
+            ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), State]);
+        Error ->
+            ?ERR("Unexpected error while checking state of ~p on node ~p: ~p", [?DB, node(), Error])
+    end.
