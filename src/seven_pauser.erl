@@ -1,9 +1,5 @@
 %%% @author Seventh State <contact@seventhstate.io>
-%%% @copyright (C) 2025, Seventh State
-%%% @doc
-%%%
-%%% @end
-%%% Created : 29 Jul 2025 by Seventh State <contact@seventhstate.io>
+%%% @copyright (C) 2025, Erlang Solutions Ltd., Seventh State
 -module(seven_pauser).
 
 -behaviour(gen_server).
@@ -62,12 +58,19 @@ handle_info(check, State) ->
     Nodes = rabbit_nodes:list_members(),
     RunningNodes = rabbit_nodes:list_running(),
     IsMinority = length(RunningNodes) < length(Nodes) / 2,
+    AnyNodesDown = RunningNodes < Nodes,
+    ListenersRunning = maps:get(listeners, State, running) =:= running,
+    case {AnyNodesDown, ListenersRunning} of
+        {true, true} ->
+            db_state();
+        _ -> ok
+    end,
     case IsMinority of
         true when State =:= #{listeners => running} ->
-            db_state(),
             ?INF("Minority partition detected, pausing operations", []),
             suspend_listeners(),
             close_connections(),
+            db_state(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => suspended}};
         false when State =:= #{listeners => suspended} ->
@@ -134,8 +137,8 @@ db_state() ->
     case catch ets:lookup(ra_state, ?DB) of
         [] ->
             ?WRN("Failed to get state of ~p on node ~p", [?DB, node()]);
-        [{?DB, State, _}] when State =/= leader andalso State =/= follower ->
-            ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), State]);
+        [{?DB, KhepriState, _}] when KhepriState =/= leader andalso KhepriState =/= follower ->
+            ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), KhepriState]);
         Error ->
             ?ERR("Unexpected error while checking state of ~p on node ~p: ~p", [?DB, node(), Error])
     end.
