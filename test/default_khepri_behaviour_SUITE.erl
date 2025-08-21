@@ -1,9 +1,8 @@
+%%% This Source Code Form is subject to the terms of the Mozilla Public
+%%% License, v. 2.0. If a copy of the MPL was not distributed with this
+%%% file, You can obtain one at http://mozilla.org/MPL/2.0/.
 %%% @author Seventh State <contact@seventhstate.io>
-%%% @copyright (C) 2025, Seventh State
-%%% @doc 
-%%%
-%%% @end
-%%% Created : 30 Jul 2025 by Seventh State <contact@seventhstate.io>
+%%% @copyright (C) 2025, Erlang Solutions Ltd., Seventh State
 -module(default_khepri_behaviour_SUITE).
 
 -compile(export_all).
@@ -71,7 +70,7 @@ partition_test(Config) ->
     Node1 = nodename(Config, 0),
     Node2 = nodename(Config, 1),
     Node3 = nodename(Config, 2),
-    
+
     Queue = atom_to_binary(?FUNCTION_NAME),
     {Connection, Channel1} = open_connection_and_channel(Config, Node1),
     declare_classic_queue(Channel1, <<Queue/binary, "_classic">>),
