@@ -70,7 +70,7 @@ handle_info(check, State) ->
     end,
     case IsMinority of
         true when State =:= #{listeners => running} ->
-            ?INF("Minority partition detected, pausing operations", []),
+            ?WRN("Minority partition detected, pausing operations.", []),
             suspend_listeners(),
             close_connections(),
             db_state(),
@@ -140,8 +140,12 @@ db_state() ->
     case catch ets:lookup(ra_state, ?DB) of
         [] ->
             ?WRN("Failed to get state of ~p on node ~p", [?DB, node()]);
-        [{?DB, KhepriState, _}] when KhepriState =/= leader andalso KhepriState =/= follower ->
+        [{?DB, leader, _}] ->
+            ok;
+        [{?DB, follower, _}] ->
+            ok;
+        [{?DB, KhepriState, _}] ->
             ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), KhepriState]);
         Error ->
-            ?ERR("Unexpected error while checking state of ~p on node ~p: ~p", [?DB, node(), Error])
+            ?ERR("Unexpected error while checking state of ~p on node ~p: ~1000p", [?DB, node(), Error])
     end.
