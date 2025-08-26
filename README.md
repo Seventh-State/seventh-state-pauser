@@ -1,8 +1,87 @@
-# Seventh State Khepri Pause-Minority
+# Seventh State PauseR
 
-This repository is a **template plugin** for Seventh State plugins. You can use it as a starting point for your own plugin development.
+The Seventh State PauseR Plugin introduces pause_minority equivalent behaviour tailored for Khepri in RabbitMQ.
+It detects when the local node is in a minority partition and enforces a pause mode by:
 
-## Getting Started
+- Suspending all listeners
+- Closing all existing client connections
+
+This guide explains how to install, configure, and use the plugin.
+
+**Note**: This plugin only works when RabbitMQ is running with Khepri enabled. It has no effect if Khepri is disabled.
+
+## Requirements
+
+- RabbitMQ ≥ 4.1.0 (tested with RabbitMQ 4.1.2) with **Khepri enabled**.  
+  Install RabbitMQ with a compatible Erlang version as listed at:  
+  https://www.rabbitmq.com/docs/which-erlang
+
+- RabbitMQ must be configured with:  
+  `cluster_partition_handling = pause_minority`
+
+## Installation
+
+1. Obtain the Plugin  
+   The plugin must be compatible with your RabbitMQ and Erlang versions.  
+   Download the correct plugin build for your environment.
+
+2. Locate the RabbitMQ Plugin Directory  
+   You can find the plugin directory by running:  
+   `rabbitmq-plugins directories`  
+   Example output:  
+   `Plugin archives directory: /usr/lib/rabbitmq/plugins:/usr/lib/rabbitmq/lib/rabbitmq_server-4.1.2/plugins`
+
+3. Add the Plugin  
+   Copy the plugin into the plugins directory:  
+   `cp seventh_state_pauser.ez /usr/lib/rabbitmq/lib/rabbitmq_server-<version>/plugins/`
+
+4. Enable the Plugin  
+   `rabbitmq-plugins enable seventh_state_pauser`
+
+5. Restart RabbitMQ  
+   `systemctl restart rabbitmq-server`
+
+Make sure all cluster nodes have the plugin installed and enabled.
+
+## Configuration
+
+The plugin works automatically based on RabbitMQ’s native configuration.
+
+To enable correct behaviour during network partitions, ensure RabbitMQ is configured with:
+
+`cluster_partition_handling = pause_minority`
+
+The plugin uses this setting to determine how to react and manage cluster recovery.
+
+The interval between checks can be configured through:
+
+`seven_pauser.check_interval_seconds = 5`
+
+The default value is 5 seconds, which offers a balance between resource usage and efficiency of detection.
+A lower value will detect partitions quicker at the cost of an increased resource usage.
+
+## Default Kherpi Behaviour
+
+When a node is in a minority partition:
+
+- Existing connections remain open
+- New connections are accepted
+- Local publish/consume on **pre-declared classic queues** continues (producer and consumer on the same node)
+- Queue declarations (any type) are rejected
+
+## Plugin Behaviour
+
+- On startup, the plugin automatically starts alongside the RabbitMQ cluster, operating in line with the configured cluster_partition_handling.
+- Every interval (default 3 seconds), the plugin checks whether the local node is in a minority partition.
+- If in minority:
+   - Suspend all non-management listeners and prevents new client connections
+   - Close all existing client connections
+- If recovered to majority:
+   - Resume all listeners
+   - Allow new client connections
+- Management listeners (e.g., HTTP API, Management UI) still remain available.
+
+## Development
 
 You can choose to build and test the plugin using either:
 
@@ -68,113 +147,3 @@ gmake ct-a_test_suite t="group:case" # Run a specific test case
 
 > This approach avoids local dependency/version issues.
 
-## Template for Plugin with Custom RabbitMQ
-
-This repository also provides a template for developing plugins with a **custom RabbitMQ build**.
-If your plugin requires changes to the RabbitMQ source code (e.g. patching core modules), you should use the `hello-with-custom-rabbit` branch as a starting point.
-It includes everything needed to build, test, and release your plugin alongside a custom RabbitMQ version.
-
-### Step 1: Build RabbitMQ (Custom Branch)
-
-1. Clone the private RabbitMQ repository:
-
-   ```bash
-   git clone https://github.com/Seventh-State/rabbitmq-server-private.git
-   ```
-2. Create a new custom branch using the format: `<version>-<plugin-name>`
-
-   Example:
-
-   ```
-   v4.1.2-khepri-pause-minority
-   ```
-3. Make your changes and push the branch to GitHub.
-4. Navigate to the **GitHub Actions** page of the plugin repository.
-5. **Trigger the Build RabbitMQ server** for your branch by selecting it from the workflow UI.
-
-
-### Step 2: Generate Manifest File
-
-1. After the RabbitMQ build completes, **note the run number** of the successful build.
-2. Update the `RUN_NUMBER` in the `project.env` file to match the build run number:
-
-   ```env
-   RUN_NUMBER=42
-   ```
-3. Run:
-
-   ```bash
-   gmake generate-manifest
-   ```
-
-   This will generate one manifest file **per RabbitMQ version defined** in `.github/matrix.json`, located in the `priv/` folder.
-   For example:
-
-   ```
-   priv/seven_khepri_pause_minority_manifest_v4.1.2.json
-   priv/seven_khepri_pause_minority_manifest_v4.0.9.json
-   ```
-4. **Manually verify the manifest**, especially the `changed_modules` list, which includes all `.beam` files that were modified.
-   Example manifest:
-
-   ```json
-   {
-     "base_rmq_ref": "v4.1.2",
-     "source_build_id": "local",
-     "changed_modules": [
-       {
-         "archive_path": "./rabbit-4.1.2+1.g4ca63cb/ebin/rabbit_quorum_queue.beam",
-         "filename": "rabbit_quorum_queue.beam",
-         "md5hash": "WUg4tPV17N7848kYq0qYrQ=="
-       }
-     ]
-   }
-   ```
-5. Once verified, commit and push the updated manifest.
-
-### Step 3: Trigger Plugin Build
-
-Commit and push your changes (e.g. the manifest update).
-   * Push your changes and open a Pull Request, **or**
-   * Manually trigger the plugin build from GitHub Actions by selecting the correct branch.
-
-No other inputs are required — the build will automatically pick up the configuration from your branch.
-
-### Build Artifacts
-
-After the plugin build completes, go to the **Artifacts** section in the GitHub Actions workflow run.
-
-You will see **multiple `.ez` and `.zip` files**, corresponding to the different RabbitMQ versions defined in `matrix.json`.
-
-#### Examples:
-
-* **Plugin `.ez` files**:
-
-  ```
-  seventh-state-khepri-pause-minority-rabbitmq-v4.1.2-ez
-  seventh-state-khepri-pause-minority-rabbitmq-v4.0.9-ez
-  ```
-
-* **Module override `.zip` files**:
-
-  ```
-  seventh-state-khepri-pause-minority-rabbitmq-v4.1.2-modules
-  seventh-state-khepri-pause-minority-rabbitmq-v4.0.9-modules
-  ```
-
-You can download and use these artifacts for testing or deployment.
-
-## Release Process
-
-To create a new release of the plugin:
-
-1. **Create and push a Git tag** (e.g. `v1.0.0`):
-
-   ```bash
-   git tag v1.0.0
-   git push origin v1.0.0
-   ```
-
-2. This will automatically trigger the **`release` GitHub Actions workflow**, which builds the plugin and attaches the artifacts to a new GitHub Release.
-
-3. After the release is published, you can go to the **"Releases"** tab in GitHub and optionally **edit the description**, or add notes, if needed.
