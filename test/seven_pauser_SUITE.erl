@@ -107,7 +107,7 @@ partition_test(Config) ->
     %% restore cluster
     rabbit_ct_broker_helpers:allow_traffic_between(Node1, Node2),
     rabbit_ct_broker_helpers:allow_traffic_between(Node1, Node3),
-    timer:sleep(5000), % wait for the cluster to stabilize
+    timer:sleep(10000), % wait for the cluster to stabilize
 
     {ok, OpenNewChannel} = open_channel(Config, Node1),
     declare_classic_queue(OpenNewChannel, <<Queue/binary, "_classic_recovered">>),
