@@ -33,20 +33,18 @@ start_link(Name) ->
 
 init(_Args) ->
     KhepriState = rabbit_khepri:get_feature_state(),
-    ClusterPartitionHandling = application:get_env(rabbit, cluster_partition_handling, ignore),
-    case {KhepriState, ClusterPartitionHandling} of
-        {enabled, pause_minority} ->
+    case KhepriState of
+        enabled ->
             ?INF("Seventh State PauseR is initialised and running with interval "
-                 "~p seconds",
+                 "~p seconds.",
                  [?INTERVAL]),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {ok, #{listeners => running}};
         _ ->
             ?INF("Seventh State PauseR is not initialised: enable khepri-db feature "
-                 "flag and set cluster_partition_handling=pause_minority, then "
-                 "restart RabbitMQ to initialise the plugin",
+                 "flag then restart RabbitMQ to initialise the plugin.",
                  []),
-            {ok, stopped} % indicates that the server will do nothing
+            {ok, stopped}
     end.
 
 handle_call(stop, _From, State) ->
@@ -61,34 +59,53 @@ handle_info(check, State) ->
     Nodes = rabbit_nodes:list_members(),
     RunningNodes = rabbit_nodes:list_running(),
     IsMinority = length(RunningNodes) < length(Nodes) / 2,
-    AnyNodesDown = RunningNodes < Nodes,
+    AnyNodesDown = length(RunningNodes) < length(Nodes),
     ListenersRunning = maps:get(listeners, State, running) =:= running,
     case {AnyNodesDown, ListenersRunning} of
         {true, true} ->
-            db_state();
+            log_db_state();
         _ -> ok
     end,
-    case IsMinority of
+
+
+
+    KhepriState = case khepri_db_state() of
+        {ok, KS} ->
+            KS;
+        _ ->
+            unknown
+    end,
+
+    ShouldSuspend = case {IsMinority, KhepriState} of
+        {true, _} ->
+            true;
+        {_, pre_vote} ->
+            true;
+        _ ->
+            false
+    end,
+
+    case ShouldSuspend of
         true when State =:= #{listeners => running} ->
             ?WRN("Minority partition detected, pausing operations.", []),
             suspend_listeners(),
             close_connections(),
-            db_state(),
+            log_db_state(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => suspended}};
         false when State =:= #{listeners => suspended} ->
-            ?INF("Minority partition no longer detected, resuming operations", []),
+            ?INF("Minority partition no longer detected, resuming operations.", []),
             resume_listeners(),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, #{listeners => running}};
         true ->
             ?DBG("Minority partition detected, but already in suspended state, "
-                 "skipping",
+                 "skipping.",
                  []),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, State};
         false ->
-            ?DBG("No minority partition detected, continuing normal operations", []),
+            ?DBG("No minority partition detected, continuing normal operations.", []),
             erlang:send_after(?INTERVAL * 1000, self(), check),
             {noreply, State}
     end;
@@ -103,7 +120,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 suspend_listeners() ->
     Listeners = listeners(),
-    ?INF("Asked to suspend ~b client connection listeners. No new client "
+    ?WRN("Asked to suspend ~b client connection listeners. No new client "
          "connections will be accepted until these listeners are resumed!",
          [length(Listeners)]),
     lists:foreach(fun ranch:suspend_listener/1, Listeners).
@@ -136,16 +153,24 @@ close_connections() ->
            end)
      || #tracked_connection{pid = Pid, type = network} <- Connections].
 
-db_state() ->
-    case catch ets:lookup(ra_state, ?DB) of
-        [] ->
-            ?WRN("Failed to get state of ~p on node ~p", [?DB, node()]);
-        [{?DB, leader, _}] ->
+log_db_state() ->
+    case khepri_db_state() of
+        {ok, leader} ->
             ok;
-        [{?DB, follower, _}] ->
+        {ok, follower} ->
             ok;
-        [{?DB, KhepriState, _}] ->
-            ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), KhepriState]);
+        {ok, OtherState} ->
+            ?WRN("State of ~p on node ~p is ~p, expected leader or follower", [?DB, node(), OtherState]);
         Error ->
             ?ERR("Unexpected error while checking state of ~p on node ~p: ~1000p", [?DB, node(), Error])
+    end.
+
+khepri_db_state() ->
+    case catch ets:lookup(ra_state, ?DB) of
+        [] ->
+            {error, not_running};
+        [{?DB, KhepriState, _}] ->
+            {ok, KhepriState};
+        Error ->
+            {error, {unexpected_error, Error}}
     end.
