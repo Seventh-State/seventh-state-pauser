@@ -47,10 +47,6 @@ Make sure all cluster nodes have the plugin installed and enabled.
 
 The plugin works automatically based on RabbitMQ’s native configuration.
 
-To enable correct behaviour during network partitions, ensure RabbitMQ is configured with:
-
-`cluster_partition_handling = pause_minority`
-
 The plugin uses this setting to determine how to react and manage cluster recovery.
 
 The interval between checks can be configured through:
