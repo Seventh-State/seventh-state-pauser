@@ -67,6 +67,10 @@ end_per_testcase(Testcase, Config) ->
 %% -------------------------------------------------------------------
 
 partition_test(Config) ->
+    rabbit_ct_broker_helpers:disable_plugin(Config, 0, "seventh_state_pauser"),
+    rabbit_ct_broker_helpers:disable_plugin(Config, 1, "seventh_state_pauser"),
+    rabbit_ct_broker_helpers:disable_plugin(Config, 2, "seventh_state_pauser"),
+
     Node1 = nodename(Config, 0),
     Node2 = nodename(Config, 1),
     Node3 = nodename(Config, 2),
