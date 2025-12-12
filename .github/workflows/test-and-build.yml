@@ -21,6 +21,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Determine package version
+        if: always()
+        run: |
+          ref_name="${GITHUB_REF_NAME:-}"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ -n "$ref_name" ]; then
+            version="$ref_name"
+          else
+            latest_tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
+            short_sha=$(git rev-parse --short HEAD)
+            if [ -n "$latest_tag" ]; then
+              version="${latest_tag}+$short_sha"
+            else
+              version="$short_sha"
+            fi
+          fi
+          echo "PACKAGE_VERSION=$version" >> "$GITHUB_ENV"
 
       - name: Common setup
         uses: ./.github/actions/setup-beam
@@ -42,13 +62,16 @@ jobs:
         if: success()
         run: make dist DIST_AS_EZS=1 current_rmq_ref=${{ matrix.rabbitmq }}
 
-      - name: Zip release artifact with RabbitMQ version
+      - name: Package release
         if: success()
-        run: zip -rj seventh-state-pauser-rabbitmq-${{ matrix.rabbitmq }}.zip plugins/seventh_state_pauser-*.ez
+        run: |
+          mkdir -p package/plugins
+          cp plugins/seventh_state_pauser-*.ez package/plugins/
+          tar -czf "seventh-state-pauser-${{ env.PACKAGE_VERSION }}-rabbitmq-${{ matrix.rabbitmq }}.tar.gz" -C package .
 
       - name: Upload build artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: seventh-state-pauser-rabbitmq-${{ matrix.rabbitmq }}
-          path: seventh-state-pauser-rabbitmq-${{ matrix.rabbitmq }}.zip
+          name: seventh-state-pauser-${{ env.PACKAGE_VERSION }}-rabbitmq-${{ matrix.rabbitmq }}
+          path: seventh-state-pauser-${{ env.PACKAGE_VERSION }}-rabbitmq-${{ matrix.rabbitmq }}.tar.gz

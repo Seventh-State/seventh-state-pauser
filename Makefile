@@ -1,7 +1,7 @@
 PROJECT             = seventh_state_pauser
 PROJECT_DESCRIPTION = Seventh State PauseR
 PROJECT_MOD         = seven_pauser_app
-PROJECT_VERSION     = 1.0.0
+PROJECT_VERSION     = 1.1.0
 
 current_rmq_ref     ?= v4.1.x
 

@@ -1,0 +1,8 @@
+name: seventh_state_pauser
+version: 1.1.0
+summary: Seventh State PauseR plugin packaged with the Seventh State extension framework
+artifact: plugins/seventh_state_pauser-1.1.0.ez
+rabbitmq:
+  min: 4.1.0
+  max: 4.2.x
+overlays:
