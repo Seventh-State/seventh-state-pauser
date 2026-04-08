@@ -15,6 +15,6 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.WORKER_PAT }}
         run: |
-          gh api repos/Seventh-State/seventh-state-worker/dispatches \
+          gh api repos/Seventh-State/seventh-state-pauser-build/dispatches \
             -f event_type='build_release' \
             -f client_payload[ref]='${{ github.ref }}'
