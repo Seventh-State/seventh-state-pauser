@@ -4,6 +4,7 @@
 /.erlang.mk/
 /cover/
 /deps/
+/dist/
 /doc/
 /ebin/
 /escript/
@@ -13,6 +14,7 @@
 /plugins.lock
 /sbin/
 /sbin.lock
+/src/extension-framework/
 /xrefr
 
 *.d
