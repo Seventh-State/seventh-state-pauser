@@ -23,7 +23,8 @@ CT_LOGS_DIR = $(CURDIR)/logs
 # The packaging framework is currently private, and should be provided before building the package.
 fw:
 	@if [ ! -d "src/extension-framework" ]; then \
-        $(error "The Seventh-State Framework was not found. Please provide it in src/extension-framework."); \
+		echo "The Seventh-State Framework was not found. Please provide it in src/extension-framework." >&2; \
+		exit 1; \
 	fi
 
 package: fw

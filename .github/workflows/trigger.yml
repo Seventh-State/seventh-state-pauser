@@ -11,9 +11,10 @@ jobs:
   run-build:
     runs-on: ubuntu-latest
     steps:
-        - name: Trigger Worker
+      - name: Trigger Worker
+        env:
+          GH_TOKEN: ${{ secrets.WORKER_PAT }}
         run: |
-            curl -X POST -H "Authorization: token ${{ secrets.WORKER_PAT }}" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/Seventh-State/seventh-state-pauser-build/dispatches \
-            -d '{"event_type": "build_release", "client_payload": {"ref": "${{ github.ref }}"}}'
+          gh api repos/Seventh-State/seventh-state-worker/dispatches \
+            -f event_type='build_release' \
+            -f client_payload[ref]='${{ github.ref }}'
