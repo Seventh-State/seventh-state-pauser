@@ -1,9 +1,6 @@
-PROJECT             = seventh_state_pauser
-PROJECT_DESCRIPTION = Seventh State PauseR
-PROJECT_MOD         = seven_pauser_app
-PROJECT_VERSION     = 1.0.0
+include project.env
 
-current_rmq_ref     ?= v4.1.x
+current_rmq_ref     ?= $(RABBITMQ_BASE)
 
 define PROJECT_APP_EXTRA_KEYS
     {broker_version_requirements, []}
@@ -22,3 +19,14 @@ include erlang.mk
 # Set log directory to be under the current project root directory
 # Otherwise, erlang.mk will set it to a weird path
 CT_LOGS_DIR = $(CURDIR)/logs
+
+# The packaging framework is currently private, and should be provided before building the package.
+fw:
+	@if [ ! -d "src/extension-framework" ]; then \
+        $(error "The Seventh-State Framework was not found. Please provide it in src/extension-framework."); \
+	fi
+
+package: fw
+	@echo "Building packages using Seventh-State framework..."
+	rm -rf $(PWD)/dist/*
+	$(MAKE) -C src/extension-framework build-linux build-docker MANIFEST=$(PWD)/package/manifest.yml OUTPUT_DIR=$(PWD)/dist

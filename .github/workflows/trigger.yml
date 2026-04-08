@@ -1,0 +1,19 @@
+# .github/workflows/trigger.yml in Public Repo
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on tag push, e.g., v1.0.0
+  workflow_dispatch:
+
+jobs:
+  run-build:
+    runs-on: ubuntu-latest
+    steps:
+        - name: Trigger Worker
+        run: |
+            curl -X POST -H "Authorization: token ${{ secrets.WORKER_PAT }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/Seventh-State/seventh-state-pauser-build/dispatches \
+            -d '{"event_type": "build_release", "client_payload": {"ref": "${{ github.ref }}"}}'
