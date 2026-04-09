@@ -17,6 +17,6 @@ jobs:
         run: |
           gh api repos/Seventh-State/seventh-state-pauser-build/dispatches \
             -f event_type='build_release' \
-            -f client_payload[ref]='${{ github.ref }}'
+            -f client_payload[ref]='${{ github.ref }}' \
             -f client_payload[ref_name]='${{ github.ref_name }}' \
             -f client_payload[ref_type]='${{ github.ref_type }}'
