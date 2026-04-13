@@ -31,3 +31,6 @@ package: fw
 	@echo "Building packages using Seventh-State framework..."
 	rm -rf $(PWD)/dist/*
 	$(MAKE) -C src/extension-framework build-linux build-docker MANIFEST=$(PWD)/package/manifest.yml OUTPUT_DIR=$(PWD)/dist
+
+prepare:
+	@build/prepare.sh $(current_rmq_ref)
