@@ -33,4 +33,4 @@ package: fw
 	$(MAKE) -C src/extension-framework build-linux build-docker MANIFEST=$(PWD)/package/manifest.yml OUTPUT_DIR=$(PWD)/dist
 
 prepare:
-	@build/prepare.sh $(current_rmq_ref)
+	@build/prepare.sh $(current_rmq_ref) $(pkg_version)

@@ -6,23 +6,29 @@ PACKAGE_DIR="${ROOT_DIR}/package"
 MANIFEST_FILE="${PACKAGE_DIR}/manifest.yml"
 ENV_FILE="${ROOT_DIR}/project.env"
 
-RABBITMQ_BRANCH="${1}"
+RABBITMQ_BRANCH="${1#v}"
 RABBITMQ_BASE_VERSION="$(echo ${RABBITMQ_BRANCH} | cut -d'.' -f1,2)"
 
-echo "Setting up PauseR build for ${RABBITMQ_BRANCH} (base version ${RABBITMQ_BASE_VERSION})"
+[ -z "$RABBITMQ_BRANCH" ] && { echo "The current RabbitMQ build branch is not set"; exit 1; }
 
-YQ_OPTS="-i"
+PKG_VERSION="${2#v}"
+
+[ -z "$PKG_VERSION" ] && { echo "The package version is not set"; exit 1; }
+
+echo "Setting up PauseR build, v${PKG_VERSION} for ${RABBITMQ_BRANCH} (base version ${RABBITMQ_BASE_VERSION})"
+
 if yq --version 2>&1 | grep -qi 'mikefarah'; then
-  # mikefarah/yq (common on macOS Homebrew)
-  yq -i "
-    .rabbitmq.min = \"${RABBITMQ_BASE_VERSION}\" |
-    .rabbitmq.max = \"${RABBITMQ_BRANCH}\"
-  " "$MANIFEST_FILE"
+  YQ_ARGS=( "-i" )
 else
-  yq -y -i "
-    .rabbitmq.min = \"${RABBITMQ_BASE_VERSION}\" |
-    .rabbitmq.max = \"${RABBITMQ_BRANCH}\"
-  " "$MANIFEST_FILE"
+  YQ_ARGS=( "-i" "-y" )
 fi
 
-echo RABBITMQ_BASE="${RABBITMQ_BRANCH}" >> "${ENV_FILE}"
+yq "${YQ_ARGS[@]}" "
+    .version = \"${PKG_VERSION}\" |
+    .artifact = \"seventh_state_pauser-${PKG_VERSION}.ez\" |
+    .rabbitmq.min = \"${RABBITMQ_BASE_VERSION}\" |
+    .rabbitmq.max = \"${RABBITMQ_BRANCH}\"
+  " "$MANIFEST_FILE"
+
+echo "PROJECT_VERSION=${PKG_VERSION}" >> "${ENV_FILE}"
+echo "RABBITMQ_BASE=${RABBITMQ_BRANCH}" >> "${ENV_FILE}"

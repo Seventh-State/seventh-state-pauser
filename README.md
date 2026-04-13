@@ -128,6 +128,7 @@ gmake ct-a_test_suite t="group:case" # Run a specific test case
 2. **Run tests and build the plugin:**
 
    ```bash
+   build/prepare.sh "${RABBITMQ_VERSION}" "${PLUGIN_VERSION}"
    docker compose -f build/docker-compose.yml run --rm test-and-build make tests
    docker compose -f build/docker-compose.yml run --rm test-and-build make dist DIST_AS_EZS=1
    ```
