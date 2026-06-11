@@ -141,6 +141,7 @@ listeners() ->
             <- rabbit_networking:node_client_listeners(node()),
         Node =:= node(),
         Protocol =/= clustering,
+        Protocol =/= https,
         Protocol =/= http].
 
 close_connections() ->
