@@ -169,4 +169,4 @@ endif
 
 # Add seshat as a build dependency for RabbitMQ 4+ workaround
 BUILD_DEPS += seshat
-dep_seshat = git https://github.com/rabbitmq/seshat v0.6.1
+dep_seshat = hex 1.0.1
