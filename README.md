@@ -16,9 +16,6 @@ This guide explains how to install, configure, and use the plugin.
   Install RabbitMQ with a compatible Erlang version as listed at:  
   https://www.rabbitmq.com/docs/which-erlang
 
-- RabbitMQ must be configured with:  
-  `cluster_partition_handling = pause_minority`
-
 ## Installation
 
 1. Obtain the Plugin  
@@ -45,9 +42,7 @@ Make sure all cluster nodes have the plugin installed and enabled.
 
 ## Configuration
 
-The plugin works automatically based on RabbitMQ’s native configuration.
-
-The plugin uses this setting to determine how to react and manage cluster recovery.
+The plugin works automatically once enabled and requires no configuration.
 
 The interval between checks can be configured through:
 
@@ -56,7 +51,7 @@ The interval between checks can be configured through:
 The default value is 5 seconds, which offers a balance between resource usage and efficiency of detection.
 A lower value will detect partitions quicker at the cost of an increased resource usage.
 
-## Default Kherpi Behaviour
+## Default Khepri Behaviour
 
 When a node is in a minority partition:
 
@@ -67,8 +62,8 @@ When a node is in a minority partition:
 
 ## Plugin Behaviour
 
-- On startup, the plugin automatically starts alongside the RabbitMQ cluster, operating in line with the configured cluster_partition_handling.
-- Every interval (default 3 seconds), the plugin checks whether the local node is in a minority partition.
+- On startup, the plugin automatically starts alongside the RabbitMQ cluster.
+- Every interval (default 5 seconds), the plugin checks whether the local node is in a minority partition.
 - If in minority:
    - Suspend all non-management listeners and prevents new client connections
    - Close all existing client connections
